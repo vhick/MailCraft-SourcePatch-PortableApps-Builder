@@ -1,3 +1,21 @@
+# MailCraft Enhanced PortableApps Builder — b1r5 Click Repair (Experimental)
+
+**b1r5 fixes an interaction-area problem identified after b1r4 built successfully but its “Load signature pictures” button could not be clicked.** This is a separate enhanced repository build; keep the stable portable builder unchanged.
+
+The b1r4 button was inserted **inside the reading body's rendering function**. MailCraft's body painter registers a click-and-drag surface spanning the full clip area, including the area where the new button is drawn. A later interaction can intercept the button's click. b1r5 clips the following signature body to start *below* the button and its optional status line. The button is outside that body's click surface.
+
+**What remains unchanged:** b1r2 compact social-icon placeholders, b1r4 manual HTTPS downloads/status diagnostics, outgoing signature HTML, Gmail OAuth, stable data folders, and normal received-email privacy. Google Contacts and Calendar synchronization are not part of this release.
+
+**Build settings:** `upstream_version=v0.13.0`, `package_revision=b1r5`, `compact_signature_preview=true`, `signature_picture_button=true`, `publish=false`. Upload all contents of the ZIP including `.github` to the **separate enhanced builder repository**.
+
+**First acceptance test:** Open a new email, verify the button can be clicked once and its label changes to **Hide signature pictures**. A loading/error counter should appear. Only after that test should you check whether the seven Icons8 graphics load. Send one Gmail test to confirm that the outgoing HTML signature still looks correct. Keep a separate test install and separate writable `Data` folder.
+
+**Validation limits:** Local Python tests and ZIP/workflow checks pass. Windows GUI behavior and full Rust compilation still require your GitHub Actions and real Windows test. This is an **untested runtime fix**, not a confirmed working MailCraft release. If it fails, turn `signature_picture_button` off to return to b1r2 preview behavior.
+
+See `docs/B1R5-CLICK-REPAIR.md` for technical details. Older b1r4/b1r3/b1r2 sections below are included for historical reference; their default workflow values are superseded by the instructions above.
+
+---
+
 # MailCraft Enhanced Builder b1r4 — diagnostic preview update
 
 **Testing release; Windows compilation and runtime behavior still require GitHub Actions verification.** This is not the stable MailCraft builder. It adds a visible **loading / successful / failed / last error** indication to the optional signature image preview button and allows the user's exact `img.icons8.com/color/48/` signature icons through even if the HTML parser lost their explicit size (still manually requested, HTTPS-only, maximum twelve URLs, 512 KiB each). All other remote image hosts remain eligible only when both small dimensions survive parsing. It retains the previously tested b1r2 layout adjustment and does not modify outgoing HTML, normal received-mail privacy settings, Gmail OAuth, or portable data handling. Turn the `signature_picture_button` input off to fall back to b1r2 behavior.

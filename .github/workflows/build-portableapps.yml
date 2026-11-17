@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r4)'
+        description: 'Community builder/package revision (e.g. b1r5)'
         required: true
         type: string
-        default: b1r4
+        default: b1r5
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -100,7 +100,7 @@ jobs:
           & python scripts/preview_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Preview-only source patch failed: review upstream source changes before rebuilding' }
 
-      - name: Add opt-in signature image preview control (fail closed on source drift)
+      - name: Add b1r5 clickable opt-in signature picture preview control (fail closed on source drift)
         if: env.ALREADY_PUBLISHED != 'true' && inputs.compact_signature_preview == true && inputs.signature_picture_button == true
         run: |
           & python scripts/signature_images_patch.py --source upstream

@@ -36,7 +36,18 @@ class SignatureImagePatchTests(unittest.TestCase):
             self.assertIn('img.icons8.com/color/48/',s)
             self.assertIn('last error:',s)
             self.assertIn('forget_failure',s)
+            self.assertIn('ui.set_clip_rect(ui.clip_rect().intersect(egui::Rect::everything_below(signature_body_top)))',s)
+            self.assertIn('let signature_body_top = ui.cursor().min.y;',s)
             self.assertIn('access = Access::Blocked',s)
+    def test_preview_button_excluded_from_body_interaction(self):
+        helper=module.PREVIEW_UI
+        button=helper.index('if ui.small_button(label).clicked()')
+        clip=helper.index('ui.set_clip_rect(ui.clip_rect().intersect(egui::Rect::everything_below(signature_body_top)))')
+        self.assertLess(button, clip)
+        self.assertIn('if matches!(place, Place::Preview)', helper)
+        # Upstream view::paint's full clip-rect click surface must start below the control.
+        self.assertIn('let signature_body_top = ui.cursor().min.y;', helper)
+
     def test_bad_anchor_refuses_without_modifying_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/'crates/ui-egui/src/reading/view.rs'

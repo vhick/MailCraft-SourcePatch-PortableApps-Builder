@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""b1r4: image preview retry, supported Icons8 size fallback and visible diagnostics.
+"""b1r5: repair signature picture button hit region; preserve b1r4 diagnostics.
 
 This extends the b1r2 compact-slot patch. It modifies ONLY reading/view.rs; no
 outgoing MIME, account data, OAuth, normal mail access, or launcher changes.
@@ -29,7 +29,7 @@ struct SignaturePicturePreview {
     last_error: Option<String>,
 }
 
-/// v1r4 fixes the b1r3 silent failure: for the owner's original Icons8 signature,
+/// b1r4 fixed the b1r3 silent failure: for the owner's original Icons8 signature,
 /// image URLs are kept even if the HTML parser loses their width/height.
 /// Every other host still requires both explicit small dimensions. The user
 /// must opt in each time; no network fetch is performed for incoming email.
@@ -168,6 +168,15 @@ PREVIEW_UI = r'''    // Only the user's own signature preview gets this control.
         } else {
             access = Access::Blocked;
         }
+        // b1r5: the body painter registers a click-and-drag interaction across
+        // ui.clip_rect(), NOT just the image blocks. Without this boundary its
+        // huge interactive rectangle also covers the opt-in button drawn above,
+        // which makes the button appear disabled / impossible to click.
+        // Restrict the reading body to the region BELOW the button and optional
+        // status line. The user's button remains outside the body hit region.
+        // This UI is a nested compose preview scope; regular mail is untouched.
+        let signature_body_top = ui.cursor().min.y;
+        ui.set_clip_rect(ui.clip_rect().intersect(egui::Rect::everything_below(signature_body_top)));
     }
 '''
 
@@ -192,7 +201,7 @@ def patch(root: Path) -> None:
     out = raw.replace(helper_anchor, PREVIEW_HELPER + "\n" + helper_anchor, 1)
     out = out.replace(anchor, PREVIEW_UI + anchor, 1)
     view.write_text(out, encoding="utf-8", newline="\n")
-    print("b1r4 signature image preview: optional button + status; HTTPS images; host guard; preview only")
+    print("b1r5 signature image preview: protected click region + b1r4 downloader diagnostics; preview only")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
