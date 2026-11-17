@@ -1,3 +1,11 @@
+# MailCraft Enhanced Builder b1r4 — diagnostic preview update
+
+**Testing release; Windows compilation and runtime behavior still require GitHub Actions verification.** This is not the stable MailCraft builder. It adds a visible **loading / successful / failed / last error** indication to the optional signature image preview button and allows the user's exact `img.icons8.com/color/48/` signature icons through even if the HTML parser lost their explicit size (still manually requested, HTTPS-only, maximum twelve URLs, 512 KiB each). All other remote image hosts remain eligible only when both small dimensions survive parsing. It retains the previously tested b1r2 layout adjustment and does not modify outgoing HTML, normal received-mail privacy settings, Gmail OAuth, or portable data handling. Turn the `signature_picture_button` input off to fall back to b1r2 behavior.
+
+**Test:** Click **Load signature pictures** once and confirm it changes to **Hide signature pictures**. Check the live status line and, if images remain missing, record the *last error*. Click **Hide** and **Load** to retry after a failure. The host image downloader may reject a request; there is no guarantee every third-party image will load. No new Google or account credentials are required.
+
+---
+
 # MailCraft Enhanced PortableApps Builder b1r3 — Manual signature picture preview
 
 **EXPERIMENTAL independent enhanced repo.** This kit builds Windows PortableApps MailCraft using official immutable upstream release source plus small fail-closed optional patches. **Keep your original stable MailCraft builder repository untouched.**

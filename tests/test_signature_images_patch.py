@@ -32,7 +32,10 @@ class SignatureImagePatchTests(unittest.TestCase):
             self.assertIn('signature_picture_preview_tick',s)
             self.assertIn('pictures.set_remote',s)
             self.assertIn('3..=48',s)
-            self.assertIn('MAX_ICONS: usize = 12',s)
+            self.assertIn('const MAX_ICONS: usize = 12',s)
+            self.assertIn('img.icons8.com/color/48/',s)
+            self.assertIn('last error:',s)
+            self.assertIn('forget_failure',s)
             self.assertIn('access = Access::Blocked',s)
     def test_bad_anchor_refuses_without_modifying_source(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r3)'
+        description: 'Community builder/package revision (e.g. b1r4)'
         required: true
         type: string
-        default: b1r3
+        default: b1r4
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -24,7 +24,7 @@ on:
         type: boolean
         default: true
       signature_picture_button:
-        description: 'Add manual Load signature pictures button (HTTPS, small icons only)'
+        description: 'Add opt-in signature image button with download diagnostics (HTTPS only)'
         required: true
         type: boolean
         default: true
