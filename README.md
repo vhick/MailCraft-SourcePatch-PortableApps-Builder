@@ -1,3 +1,27 @@
+# MailCraft Enhanced PortableApps Builder b1r7 — Google Sync Troubleshooting + Manual Retry
+
+**Experimental; not yet verified by Windows runtime.** b1r5 is the confirmed working signature and Gmail baseline. This version retains b1r6 Google read-only Calendar and Contacts integration and adds direct visible diagnostics in the Calendar and People screens.
+
+**Why b1r7:** The first reported b1r6 build showed Gmail working but an empty Calendar and Contacts. b1r6 silently stored sync errors in logs and retried only at 15-minute intervals. A missing Google Calendar/Contacts grant, Workspace administrator block, disabled auto-sync, or API failure could all look like an empty calendar. This build shows these states and adds **Sync Google now** to retry without waiting.
+
+**Important:** This is an observability + retry patch, not proof that the Google API integration will work. Its new code must first compile on Windows and be tested with real Google credentials. If the diagnostic shows an OAuth consent problem, reconnect with Google and approve the Calendar/Contacts permissions. Never paste Google tokens or client secrets into GitHub Issues or ChatGPT.
+
+## Build
+
+1. Replace enhanced builder repo contents with this kit, including hidden `.github` directory; do not modify the original stable builder repo.
+2. GitHub Actions workflow: `upstream_version=v0.13.0`, `package_revision=b1r7`, `compact_signature_preview=true`, `signature_picture_button=true`, `google_calendar_contacts=true`, `publish=false`.
+3. Download and run in **separate PortableApps installation**, with a separate `Data` directory. Keep b1r5 and your existing data backup safe.
+4. Open **Calendar** or **People**. Look for **Sync Google now** and its adjacent status. Click once. Possible statuses: `Google sync paused: ...`, `Google sync not started: reconnect ...`, `Google sync problem: Google permission denied ...`, or `Google sync completed: N calendars, N events, N contacts`.
+5. If permissions are missing, use **Send/Receive → Account Settings → Reconnect with Google**, authorize Gmail + Calendar + Contacts. The app must request all scopes. Use **Sync Google now** afterward to avoid the 15-minute b1r6 retry delay.
+6. If status says successful with zero results, verify the Google account has items and check the selected calendars/date range; if the status shows an error, collect just the error status (never secrets).
+7. Test Gmail Send/Receive and signature pictures; if any regression, disable `google_calendar_contacts` in workflow or restore b1r5.
+
+**What changes in the native app:** `google_pim.rs` displays sync lifecycle/summary; `calendar_view.rs` and `people_view.rs` each include a read-only sync status row and manual retry control. The underlying Google API downloader, incoming mail, outgoing HTML and signature preview patches remain unchanged. Google sync remains read-only on Google's server.
+
+**Limitations:** Does not yet implement two-way sync, Tasks, push changes, editing, sync while closed, or a verified Gmail + Calendar + Contacts production solution. Google External/Testing can force periodic reauthorization.
+
+---
+
 # MailCraft Enhanced PortableApps Builder b1r6 — Google Calendar + Contacts (experimental)
 
 **Source builder ZIP, not an executable.** b1r5 is the latest user-verified working enhanced build (Gmail OAuth and HTML signature preview with all seven icons). b1r6 adds an **optional** read-only Google Calendar/Contacts native connector built over official upstream **v0.13.0**, WITHOUT replacing or altering your original stable MailCraft builder.

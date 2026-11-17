@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r6)'
+        description: 'Community builder/package revision (e.g. b1r7)'
         required: true
         type: string
-        default: b1r6
+        default: b1r7
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -111,7 +111,7 @@ jobs:
           & python scripts/signature_images_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Signature images UI patch failed; keep b1r2 or inspect upstream source changes' }
 
-      - name: Apply experimental b1r6 Google Calendar + Contacts native integration (fail closed)
+      - name: Apply experimental b1r7 Google Calendar + Contacts native integration (fail closed)
         if: env.ALREADY_PUBLISHED != 'true' && inputs.google_calendar_contacts == true
         run: |
           & python scripts/google_pim_patch.py --source upstream

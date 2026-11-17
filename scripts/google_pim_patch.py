@@ -23,14 +23,16 @@ def plan(src: Path) -> dict[Path, str]:
     net_lib = src/'crates/net/src/lib.rs'
     ui_lib = src/'crates/ui-egui/src/lib.rs'
     main = src/'apps/mailcraft/src/main.rs'
+    calendar_view = src/'crates/ui-egui/src/calendar_view.rs'
+    people_view = src/'crates/ui-egui/src/people_view.rs'
     net_mod = src/'crates/net/src/google_pim.rs'
     ui_mod = src/'crates/ui-egui/src/google_pim.rs'
-    files = [oauth, net_lib, ui_lib, main]
+    files = [oauth, net_lib, ui_lib, main, calendar_view, people_view]
     if any(not f.is_file() for f in files):
         raise RuntimeError('b1r6 missing upstream source file(s)')
     if net_mod.exists() or ui_mod.exists():
         raise RuntimeError('b1r6 upstream already defines Google PIM modules; do not overwrite')
-    a, b, c, d = (f.read_text(encoding='utf-8') for f in files)
+    a, b, c, d, e, f = (file.read_text(encoding='utf-8') for file in files)
     a = replace_once(a,
         'const GOOGLE_SCOPE: &str = "https://mail.google.com/ openid email";',
         'const GOOGLE_SCOPE: &str = "https://mail.google.com/ openid email";\n'
@@ -108,8 +110,16 @@ def plan(src: Path) -> dict[Path, str]:
         '            })\n'
         '        })),',
         'host Google run hook')
+    e = replace_once(e,
+        '        header(app, ui);\n        connect_notice(app, ui);',
+        '        header(app, ui);\n        app.google_pim_controls(ui);\n        connect_notice(app, ui);',
+        'Calendar Google status and manual refresh')
+    f = replace_once(f,
+        '        crate::nav::module_foot(app, ui);\n        list(app, ui, &layout);',
+        '        crate::nav::module_foot(app, ui);\n        app.google_pim_controls(ui);\n        list(app, ui, &layout);',
+        'People Google status and manual refresh')
     return {
-        oauth: a, net_lib: b, ui_lib: c, main: d,
+        oauth: a, net_lib: b, ui_lib: c, main: d, calendar_view: e, people_view: f,
         net_mod: (ROOT/'patches/google_pim_net.rs').read_text(encoding='utf-8'),
         ui_mod: (ROOT/'patches/google_pim_ui.rs').read_text(encoding='utf-8'),
     }
