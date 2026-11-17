@@ -7,19 +7,24 @@ on:
         description: 'Stable release: latest or vX.Y.Z'
         required: true
         type: string
-        default: latest
+        default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r2)'
+        description: 'Community builder/package revision (e.g. b1r3)'
         required: true
         type: string
-        default: b1r2
+        default: b1r3
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
         type: boolean
         default: false
       compact_signature_preview:
-        description: 'Apply safe preview-only compact placeholders for small remote signature icons'
+        description: 'Retain b1r2 compact geometry for blocked signature icon placeholders'
+        required: true
+        type: boolean
+        default: true
+      signature_picture_button:
+        description: 'Add manual Load signature pictures button (HTTPS, small icons only)'
         required: true
         type: boolean
         default: true
@@ -94,6 +99,12 @@ jobs:
         run: |
           & python scripts/preview_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Preview-only source patch failed: review upstream source changes before rebuilding' }
+
+      - name: Add opt-in signature image preview control (fail closed on source drift)
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.compact_signature_preview == true && inputs.signature_picture_button == true
+        run: |
+          & python scripts/signature_images_patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Signature images UI patch failed; keep b1r2 or inspect upstream source changes' }
 
       - name: Compile real Rust application, CLI and C++ Windows GUI launcher
         if: env.ALREADY_PUBLISHED != 'true'

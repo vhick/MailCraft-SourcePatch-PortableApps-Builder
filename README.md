@@ -1,3 +1,41 @@
+# MailCraft Enhanced PortableApps Builder b1r3 — Manual signature picture preview
+
+**EXPERIMENTAL independent enhanced repo.** This kit builds Windows PortableApps MailCraft using official immutable upstream release source plus small fail-closed optional patches. **Keep your original stable MailCraft builder repository untouched.**
+
+## What's new in b1r3
+
+- Preserves the **user-confirmed b1r2 horizontal social-icon placement** in the HTML signature preview.
+- Adds an explicit **Load signature pictures (contacts external sites)** button in MailCraft's OWN signature preview. The button appears above the preview only when its HTML references eligible remote pictures and the desktop host offers guarded image downloads.
+- Only after the owner clicks the button, the application requests **HTTPS image URLs with explicit 3–48 pixel width and height**, through MailCraft's existing host-controlled guarded downloader. Maximum 12 unique icons, three simultaneous requests, 512 KiB/image, 30-second timeout. The normal image decoder checks the payload; no new HTTP or Rust crate dependency is needed.
+- Clicking **Hide signature pictures** hides them again; consent is held in the current app's temporary UI memory, not written to disk. It may be remembered for the same HTML preview within the same running session. Fetching a picture does contact its remote host; press this only for signatures you trust.
+- Normal received-message privacy behavior, mailbox remote-image rules, outgoing HTML/MIME, OAuth, Contacts, Calendar, profile and PortableApps launcher are **not modified**.
+
+## Limitations and supported baseline
+
+- This is a **source patch for v0.13.0**, not proof of a Windows build. Run GitHub Actions with `upstream_version=v0.13.0`, revision `b1r3`, `compact_signature_preview=true`, `signature_picture_button=true`, and `publish=false` for first test. Upstream changes deliberately cause an anchor refusal; inspect and update rather than forcing a patch.
+- Social icons may still fail if the remote server refuses the request or returns unsupported data; a preview click is not permission to load pictures from received emails.
+- The **three vertical contact symbols are Unicode glyphs, not images**; they need the simplified HTML styling from the successful Test 01. This code patch does not restyle complex inline `span` tags because that could affect all mail. Keep the original signature unchanged until you validate an alternative. The tested Test 01 is a per-signature workaround, not part of this public repo.
+- Embedded `data:` images remain unsupported in this preview path, as shown by your Test 02.
+- Contacts and Google Calendar synchronization are **not included** in b1r3.
+
+## Nontechnical installation
+
+1. Create or select **MailCraft-Enhanced-Portable-Builder**, separate from the original working repository.
+2. Upload **all contents of this ZIP** into the enhanced builder's root, including `.github/workflows/build-portableapps.yml`.
+3. Go to **Actions → MailCraft PortableApps - source build / ZIP / NSIS / Release → Run workflow**.
+4. Set version `v0.13.0`, revision `b1r3`, **Compact signature preview=on**, **Signature picture button=on**, **Publish=off**. Start workflow.
+5. After GitHub Actions passes, download its validated ZIP, back up your existing portable install, and test in a **separate folder** with a separate `Data` profile. Do not replace the stable installation.
+6. Open a compose message with the original HTML signature. Click **Load signature pictures** above the preview. Confirm remote Icons8 images appear; verify Gmail still receives an unchanged signature. Test Hide afterwards.
+7. If any Rust compile error or visual regression occurs, disable `signature_picture_button` (returns to b1r2 behavior) or revert to your working b1r2 kit. See `docs/B1R3-PREVIEW-ACCEPTANCE.md`.
+
+**Validation:** Unit/patch tests are included, but Windows compilation and GUI acceptance must be completed by the GitHub workflow and on your machine. Never place OAuth client secrets, user mail folders, tokens, or the signature HTML (which contains personal details) in this public builder repo.
+
+---
+
+# Archived historical reference: b1r2 baseline
+
+**The section below documents the previous experimental kit for context only. Follow the b1r3 instructions at the top for the enhanced repository.**
+
 # MailCraft PortableApps Builder Kit b1r2 — Signature Preview Geometry Fix
 
 **This is a full replacement of the original b1r1 builder repository**, not a standalone executable. Keep your installed `MailCraftPortable\Data` folder untouched. Default build remains the latest *published stable tag* (currently v0.13.0), not the moving main branch.
