@@ -1,0 +1,200 @@
+name: MailCraft PortableApps - source build / ZIP / NSIS / Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: 'Stable release: latest or vX.Y.Z'
+        required: true
+        type: string
+        default: latest
+      package_revision:
+        description: 'Community builder/package revision (e.g. b1r2)'
+        required: true
+        type: string
+        default: b1r2
+      publish:
+        description: 'Publish validated ZIP and installer to this builder repository'
+        required: true
+        type: boolean
+        default: false
+      compact_signature_preview:
+        description: 'Apply safe preview-only compact placeholders for small remote signature icons'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mailcraft-portableapps-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Windows x64 - MailCraft PortableApps
+    runs-on: windows-2025
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_VERSION: ${{ inputs.upstream_version }}
+      PACKAGE_REVISION: ${{ inputs.package_revision }}
+      SHOULD_PUBLISH: ${{ inputs.publish }}
+    steps:
+      - name: Checkout standalone builder repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Python unit tests - patches and semantic versioning
+        run: |
+          & python -m unittest discover -s tests -v
+          if ($LASTEXITCODE -ne 0) { throw 'Builder unit tests failed' }
+
+      - name: Resolve published stable MailCraft tag and immutable commit
+        run: |
+          & python scripts/resolve.py --requested "$env:REQUESTED_VERSION" --output source.json
+          if ($LASTEXITCODE -ne 0) { throw 'Upstream release resolution failed' }
+          $r = Get-Content source.json -Raw -Encoding utf8 | ConvertFrom-Json
+          "UPSTREAM_TAG=$($r.tag)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "UPSTREAM_SHA=$($r.commit)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "UPSTREAM_VERSION=$($r.version)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Skip costly recompile when the exact complete release already exists
+        if: env.SHOULD_PUBLISH == 'true'
+        run: |
+          & python scripts/preflight.py --identity source.json --revision "$env:PACKAGE_REVISION" --github-env "$env:GITHUB_ENV"
+          if ($LASTEXITCODE -ne 0) { throw 'Release preflight failed' }
+
+      - name: Verify upstream tag via shallow HTTPS checkout
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          git clone --depth 1 --single-branch --branch "$env:UPSTREAM_TAG" https://github.com/UCS-Care-Group/mailcraft.git upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Source clone failed' }
+          $got = (git -C upstream rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $got -cne $env:UPSTREAM_SHA) { throw "Git tag commit mismatch: $got versus $env:UPSTREAM_SHA" }
+          if (-not (Test-Path -LiteralPath upstream/Cargo.lock)) { throw 'Missing Cargo.lock; aborting unpinned dependency build' }
+          Write-Host "Verified source commit: $got"
+
+      - name: Apply source-level portable data adapters; fail closed if upstream changes
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          & python scripts/patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Portability source adaptation failed' }
+
+      - name: Improve small HTML signature icon preview layout (fail closed on source drift)
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.compact_signature_preview == true
+        run: |
+          & python scripts/preview_patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Preview-only source patch failed: review upstream source changes before rebuilding' }
+
+      - name: Compile real Rust application, CLI and C++ Windows GUI launcher
+        if: env.ALREADY_PUBLISHED != 'true'
+        timeout-minutes: 145
+        run: |
+          & ./scripts/build-windows.ps1 -Upstream upstream -Workspace .
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Compilation failed: $LASTEXITCODE" }
+
+      - name: Run headless native CLI version test (not a GUI test)
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          & "upstream/target/x86_64-pc-windows-msvc/release/mailcraft-cli.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "CLI version smoke test failed: $LASTEXITCODE" }
+
+      - name: Stage complete PortableApps structure with authentic icon and fresh empty Data
+        if: env.ALREADY_PUBLISHED != 'true'
+        run: |
+          & python scripts/package.py --source upstream --workspace . --identity source.json --revision "$env:PACKAGE_REVISION"
+          if ($LASTEXITCODE -ne 0) { throw 'PortableApps staging/ZIP creation failed' }
+
+      - name: Independently validate source-built PE files, metadata, icons and ZIP
+        if: env.ALREADY_PUBLISHED != 'true'
+        id: zipcheck
+        run: |
+          $zip = @(Get-ChildItem dist -Filter 'MailCraftPortable_*.zip' -File)
+          if ($zip.Count -ne 1) { throw 'Exactly one ZIP expected' }
+          & python scripts/verify.py --stage dist/stage/MailCraftPortable --zip $zip[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'PortableApps ZIP validation failed' }
+
+      # The shared Package Builder is the ONLY installer compiler.
+      - name: Shared PortableApps-style installer (independent NSIS)
+        if: env.ALREADY_PUBLISHED != 'true' && steps.zipcheck.outcome == 'success'
+        id: installer
+        continue-on-error: true
+        uses: vhick/Portable-Package-Builder@0112c35580e83b37eb8757ebcb949274e1631a04 # verified v1.0.0
+        with:
+          source-dir: dist/stage/MailCraftPortable
+          output-dir: dist/installers
+          engine: custom-nsis
+          running-exe: App\MailCraft\mailcraft.exe
+          timeout-seconds: '900'
+          package-revision: ${{ inputs.package_revision }}
+
+      - name: Verify shared installer checksums, PE and embedded payload
+        if: env.ALREADY_PUBLISHED != 'true' && steps.installer.outcome == 'success'
+        id: installercheck
+        continue-on-error: true
+        run: |
+          & ./scripts/verify-installer.ps1 -Installer '${{ steps.installer.outputs.installer-file }}' -ExpectedSha '${{ steps.installer.outputs.installer-sha256 }}'
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'NSIS validation failed' }
+
+      - name: Headless sandbox installer first-install and upgrade acceptance
+        if: env.ALREADY_PUBLISHED != 'true' && steps.installercheck.outcome == 'success'
+        id: installertest
+        continue-on-error: true
+        run: |
+          & ./scripts/test-installer.ps1 -Installer '${{ steps.installer.outputs.installer-file }}'
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Installer acceptance test failed' }
+
+      - name: Discard failed installer output (never publish an unvalidated .paf.exe)
+        if: env.ALREADY_PUBLISHED != 'true' && (steps.installer.outcome != 'success' || steps.installercheck.outcome != 'success' || steps.installertest.outcome != 'success')
+        run: |
+          if (Test-Path dist/installers) { Get-ChildItem -LiteralPath dist/installers -Filter '*.paf.exe' -File | Remove-Item -Force }
+          Write-Host 'Installer failed validation and was excluded from release; validated ZIP remains.'
+
+      - name: Release Publisher dry-run (ZIP is kept even when installer fails)
+        if: env.ALREADY_PUBLISHED != 'true' && env.SHOULD_PUBLISH == 'true' && steps.zipcheck.outcome == 'success' 
+        uses: vhick/portable-release-publisher@cb64f86ac2d8c67506db5832de07f9ff58cbeaeb # verified v1.1.1
+        with:
+          files: dist/*.zip;dist/installers/*.paf.exe
+          tag: ${{ env.RELEASE_TAG }}
+          release-title: MailCraft PortableApps ${{ env.UPSTREAM_VERSION }} ${{ env.PACKAGE_REVISION }}
+          tag-prefix: mailcraft-portable-
+          keep-releases: '3'
+          prune: 'false'
+          dry-run: 'true'
+
+      - name: Publish validated files only through pinned Release Publisher
+        if: env.ALREADY_PUBLISHED != 'true' && env.SHOULD_PUBLISH == 'true' && steps.zipcheck.outcome == 'success' 
+        uses: vhick/portable-release-publisher@cb64f86ac2d8c67506db5832de07f9ff58cbeaeb # verified v1.1.1
+        with:
+          files: dist/*.zip;dist/installers/*.paf.exe
+          tag: ${{ env.RELEASE_TAG }}
+          release-title: MailCraft PortableApps ${{ env.UPSTREAM_VERSION }} ${{ env.PACKAGE_REVISION }}
+          tag-prefix: mailcraft-portable-
+          keep-releases: '3'
+          prune: 'false'
+          dry-run: 'false'
+
+      - name: Retain validated outputs as workflow artifact when publication is disabled
+        if: env.ALREADY_PUBLISHED != 'true' && env.SHOULD_PUBLISH != 'true' && steps.zipcheck.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MailCraftPortable-validated-${{ env.UPSTREAM_VERSION }}-${{ env.PACKAGE_REVISION }}
+          path: |
+            dist/*.zip
+            dist/installers/*.paf.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Report installer-stage failure without discarding validated ZIP
+        if: env.ALREADY_PUBLISHED != 'true' && steps.zipcheck.outcome == 'success' && (steps.installer.outcome != 'success' || steps.installercheck.outcome != 'success' || steps.installertest.outcome != 'success')
+        run: |
+          throw 'PortableApps ZIP was validated; shared installer generation or payload validation FAILED. If publishing was enabled, the release may contain ZIP only. Increase package_revision before a corrected retry.'

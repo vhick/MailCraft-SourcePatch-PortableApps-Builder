@@ -1,0 +1,10 @@
+# Unattended CI downloads/builds; never commit upstream binaries, mail, or generated packages
+upstream/
+build/
+dist/
+source.json
+*.paf.exe
+__pycache__/
+*.py[cod]
+*.log
+.env
