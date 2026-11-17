@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r5)'
+        description: 'Community builder/package revision (e.g. b1r6)'
         required: true
         type: string
-        default: b1r5
+        default: b1r6
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -25,6 +25,11 @@ on:
         default: true
       signature_picture_button:
         description: 'Add opt-in signature image button with download diagnostics (HTTPS only)'
+        required: true
+        type: boolean
+        default: true
+      google_calendar_contacts:
+        description: 'EXPERIMENTAL: Google Calendar + Contacts read-only sync (needs reauthorization)'
         required: true
         type: boolean
         default: true
@@ -105,6 +110,12 @@ jobs:
         run: |
           & python scripts/signature_images_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Signature images UI patch failed; keep b1r2 or inspect upstream source changes' }
+
+      - name: Apply experimental b1r6 Google Calendar + Contacts native integration (fail closed)
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.google_calendar_contacts == true
+        run: |
+          & python scripts/google_pim_patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Google PIM source adaptation failed; keep b1r5 until updated for upstream' }
 
       - name: Compile real Rust application, CLI and C++ Windows GUI launcher
         if: env.ALREADY_PUBLISHED != 'true'
