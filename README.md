@@ -1,43 +1,63 @@
-# MailCraft Enhanced PortableApps Builder b1r8
+# MailCraft Enhanced PortableApps Builder b1r9 (EXPERIMENTAL two-way preview)
 
-## Purpose
+## Baseline
 
-Experimental b1r8 corrects the Google Calendar and Contacts synchronization error discovered during b1r7 testing. Email works, Google has authorized all five listed services, but the Calendar and People views repeatedly report that new consent is required. The previous builder misleadingly labeled every refresh failure as a consent problem.
+**b1r8 has been confirmed working on Windows** by the user: Gmail; HTML signature and all seven pictures; **2 Google calendars, 118 events, and 174 contacts** downloaded successfully. **Do not replace that working installation** with this experimental revision until the tests below pass. This repository remains separate from the original stable MailCraft builder.
 
-## What changed from b1r7
+## Improvements in b1r9
 
-1. Try MailCraft's existing in-memory Google access token first if it has more than 90 seconds remaining. This avoids a needless token-refresh request immediately after successful Google sign-in.
-2. If the first API request is rejected with HTTP 401 or 403, attempt one token refresh and retry with the new token.
-3. Distinguish rejected/expired tokens, HTTP 401/403, and connection/renewal failures. Do not display token strings or provider error bodies.
-4. Show an incrementing retry number when **Sync Google now** is pressed, so you can tell that the button registered your click.
-5. Keep the b1r5 signature preview, Gmail authentication, PortableApps launcher, and separate Data handling untouched.
+1. Existing automatic, read-only Google Calendar and Contacts refresh every **15 minutes** remains intact. It runs while MailCraft is open, online, and its automatic synchronization is enabled. The optional editor patch now shows the last successful refresh and number of completed runs so the timing can be checked without repeatedly pressing **Sync Google now**.
+2. **Optional, explicit first-stage two-way editing controls**: create a Google contact (first/last name and email), rename an existing selected Google contact (first/last name only), create a *simple timed appointment* on the primary Google calendar, and rename an existing selected Google event (title only). Each operation requires the user to check **I understand this will change data in Google** and click **Save to Google**.
+3. Google writes use Google's existing account authentication, with independent error reporting. On success the application downloads Calendar and Contacts again. Outgoing Gmail and signature behavior are not modified.
+4. Existing-event writes include the server ETag (`If-Match`), and contacts use their CONTACT-source ETag, so changes made elsewhere cause the operation to fail rather than silently overwrite new edits. A potentially completed request is **never auto-retried**.
 
-This does not introduce Calendar or Contacts writing. Only read-only Google APIs are called.
+**Not implemented yet:** deletion of events/contacts; bulk edits; changing event attendees, recurrence, location or date/time of existing events; changing multiple addresses/phone numbers of existing contacts; bidirectional editing through *MailCraft's original* ribbon/editor. Google-origin calendars remain marked read-only to that original editor: use the new explicit **Google** buttons instead. These limitations deliberately prevent data loss in this experimental first write-enabled revision.
 
-## Building with GitHub Actions
+## Build choices
 
-Upload this archive's entire contents—including `.github`—to your **separate enhanced MailCraft builder repository**. Then choose **Actions → MailCraft PortableApps - source build / ZIP / NSIS / Release → Run workflow**.
+Upload the *contents of the extracted ZIP* to the separate enhanced-builder GitHub repository. Do not upload tokens, downloaded credential JSON, account data, or passwords.
+
+Go to **Actions → MailCraft PortableApps - source build / ZIP / NSIS / Release → Run workflow** and use:
 
 | Input | Value |
-|---|---|
-| Upstream version | `v0.13.0` |
-| Package revision | `b1r8` |
-| Compact signature preview | `true` |
-| Signature picture button | `true` |
-| Google Calendar + Contacts | `true` |
-| Publish | `false` |
+| --- | --- |
+| `upstream_version` | `v0.13.0` |
+| `package_revision` | `b1r9` |
+| `compact_signature_preview` | `true` |
+| `signature_picture_button` | `true` |
+| `google_calendar_contacts` | `true` |
+| **`google_two_way_edit`** | **`true` to test explicit editing; `false` for b1r8 behavior** |
+| `publish` | **`false`** for the initial test |
 
-## Acceptance test
+The new step runs **after** the proven b1r8 Google patch, checks exact source anchors, and stops on source drift. The download, launcher, PortableApps packaging, tests, and original b1r8 fallback remain included.
 
-1. Use a separate MailCraft installation and `Data` folder. Back up the current working data first.
-2. Open **Calendar** and click **Sync Google now** once. Look for the attempt number and the subsequent status. Repeat in **People**.
-3. If the result is HTTP 403, recheck Google's granted permissions, enabled APIs, and Workspace app access; if it reports token rejection, reconnect Google. Do not repeatedly reconnect unless it says authorization was rejected.
-4. If it succeeds, verify several known appointments and contacts, then test automatic refresh and Gmail send/receive.
-5. Confirm the manual **Load signature pictures** button still loads all seven icons.
-6. If it fails, report the *visible status wording* and relevant non-sensitive diagnostic details, not access tokens, client secrets, or full credential JSON.
+## Additional Google OAuth permissions required ONLY for editing
 
-## Rollback and limitations
+Existing read-only scopes are not sufficient for creating/changing Google records. In Google Cloud Console → Google Auth Platform → Data Access add:
 
-The **b1r5** signature and Gmail build is the latest confirmed reliable version. b1r8 is an experimental source kit, and has only been validated by offline Python tests. Windows compilation and live API synchronization have not been verified here. Disable `google_calendar_contacts` or revert to b1r5 if necessary. Do not put personal Google credentials in GitHub.
+- `https://www.googleapis.com/auth/calendar.events` (write events; no requirement for full `calendar` scope)
+- `https://www.googleapis.com/auth/contacts` (write Google Contacts)
 
-Read `docs/B1R8-TOKEN-REUSE.md` for technical reasoning, and the existing `docs/B1R6-GOOGLE-PIM-ACCEPTANCE.md` for the initial integration's limitations.
+**Keep** existing `https://mail.google.com/`, `openid`, `userinfo.email`/`email`, `calendar.readonly` and `contacts.readonly`. Google Workspace administrator policy may require approval of the two new scopes. After building with editing enabled, reconnect the Google account and authorize the additional permissions; the *same* Google Desktop Client ID and Secret can be used. Do not publish the OAuth project or change to production just for testing.
+
+**If `google_two_way_edit` is false, leave Google Cloud permissions and MailCraft b1r8 as they are.**
+
+## Safe Windows acceptance order
+
+1. **Backup** the existing portable `Data` folder and keep a separate complete b1r8 installation. Never launch two installations against the same writable profile.
+2. Build b1r9 with `google_two_way_edit=true` and `publish=false` in GitHub Actions. Check compile and artifact verification; any failure means **do not install** the experimental build.
+3. Install/test in a separate portable folder. Add the Google account; finish consent for write scopes. Verify Gmail send/receive and the signature's seven visible icons.
+4. **Auto-refresh verification:** in Google Calendar web, create a uniquely named *test-only* event for the next few days. Do NOT click **Sync Google now**. Keep MailCraft running and online for at least one full 15-minute refresh interval. Check whether the event appeared and the *successful run count* increased. Repeat by adding a uniquely named contact in Google Contacts web. Verify both remain after restarting MailCraft.
+5. **Write test 1:** In MailCraft, use **New Google contact…** to add a *test-only* contact. Explicitly confirm then Save. Look it up in Google Contacts web and in MailCraft after synchronization. Rename it using **Rename selected Google contact…** and check both places. Existing email/phone fields are not changed by rename.
+6. **Write test 2:** Use **New Google appointment…** with a title and start/end time including the `+08:00` offset, e.g. `2026-11-21T09:00:00+08:00` through `2026-11-21T09:30:00+08:00`. Confirm and save. Check Google Calendar web and MailCraft. Select the event in MailCraft and use **Rename selected Google event…**, then verify the new title appears in Google Calendar.
+7. Test **offline mode** and denied scopes. The app should report errors without changing Gmail. Do not press Save again after a network error until you check Google web to see if an earlier request was received.
+8. **Rollback:** use your untouched b1r8 installation. Disabling `google_two_way_edit` in a rebuilt b1r9 also drops the experimental write feature while preserving b1r8 read-only sync.
+
+## Verification status
+
+- Local Python static/source patch tests: passed (see `tests/` and workflow).
+- ZIP file integrity and YAML parsing: checked in this environment.
+- **Actual Windows Rust compilation: not yet verified.**
+- **Actual Google write and automated refresh behavior: not yet verified.**
+
+The b1r9 kit is experimental and may require adjustment after GitHub Actions or live Google API feedback. Never test on important customer records first.
