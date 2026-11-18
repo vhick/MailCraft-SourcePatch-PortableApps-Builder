@@ -43,8 +43,11 @@ fn fetch(url: &str, access: &str) -> Result<Value, String> {
     let response = https::send(&Request {
         method: "GET", url, fields: &headers, body: &[], max_response: 4_000_000, trusted: "",
     }).map_err(|_| "Google API connection or TLS verification failed".to_string())?;
-    if response.status == 401 || response.status == 403 {
-        return Err("Google permission denied: reconnect Google and approve Calendar and Contacts access".into());
+    if response.status == 401 {
+        return Err("Google API HTTP 401: access token expired or rejected".into());
+    }
+    if response.status == 403 {
+        return Err("Google API HTTP 403: check granted scopes, Workspace policy and enabled APIs".into());
     }
     if response.status != 200 {
         return Err(format!("Google API returned HTTP {}", response.status));

@@ -18,5 +18,24 @@ class DiagnosticsTests(unittest.TestCase):
     def test_builder_toggle(self):
         s=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
         self.assertIn('google_calendar_contacts:',s)
-        self.assertIn('default: b1r7',s)
+        self.assertIn('default: b1r8',s)
 if __name__=='__main__': unittest.main()
+
+class TokenRegressionTests(unittest.TestCase):
+    def test_fresh_access_token_before_refresh(self):
+        p=(ROOT/'scripts/google_pim_patch.py').read_text()
+        self.assertLess(p.index('if !request.access.is_empty()'), p.index('match mailcraft_net::oauth::refresh_google_pim'))
+        self.assertIn('return response;', p)
+        self.assertIn('needs_new_token', p)
+        self.assertIn('error.contains(\"Google API HTTP 403\")', p)
+        self.assertIn('error.is_consent_needed()', p)
+        self.assertIn('error.is_refused_sign_in()', p)
+        self.assertNotIn('Err(_) => response.errors.push("New Google Calendar/Contacts consent',p)
+    def test_explicit_http_categories(self):
+        p=(ROOT/'patches/google_pim_net.rs').read_text()
+        self.assertIn('Google API HTTP 401',p)
+        self.assertIn('Google API HTTP 403',p)
+    def test_ui_has_live_access_and_click_acknowledgement(self):
+        p=(ROOT/'patches/google_pim_ui.rs').read_text()
+        for marker in ['pub access: String', 'pub expires_at: i64', 'manual_attempts', 'Google sync retry #']:
+            self.assertIn(marker,p)

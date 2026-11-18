@@ -19,6 +19,9 @@ pub struct GooglePimRequest {
     pub account: Account,
     pub oauth: OAuth,
     pub refresh: String,
+    /// Reuse the current short-lived Google access token when it is still valid.
+    pub access: String,
+    pub expires_at: i64,
 }
 
 #[derive(Default)]
@@ -39,6 +42,8 @@ pub(crate) struct GooglePimSync {
     pub(crate) last: HashMap<Id, Instant>,
     /// Visible in Calendar and People; contains no token or private contact data.
     pub(crate) last_summary: String,
+    /// Visible manual retry sequence, to show that a click was accepted.
+    pub(crate) manual_attempts: u64,
 }
 
 impl MailApp {
@@ -151,8 +156,11 @@ impl MailApp {
             self.google_pim.last_summary = "Google sync needs a saved Google sign-in: reconnect the account".into();
             return;
         }
+        let (access, expires_at) = self.tokens.get(&account.id)
+            .map(|tokens| (tokens.access.clone(), tokens.expires_at))
+            .unwrap_or_default();
         let request = GooglePimRequest {
-            account: account.clone(), oauth: self.effective_oauth(oauth), refresh,
+            account: account.clone(), oauth: self.effective_oauth(oauth), refresh, access, expires_at,
         };
         let Some(service) = self.services.google_pim.as_ref() else { return };
         self.google_pim.last.insert(account.id, Instant::now());
@@ -174,8 +182,9 @@ impl MailApp {
             let enabled = self.google_pim.busy.is_none();
             if ui.add_enabled(enabled, egui::Button::new("Sync Google now")).clicked() {
                 // Explicit user retry bypasses the 15-minute timer, not offline/auth safeguards.
+                self.google_pim.manual_attempts = self.google_pim.manual_attempts.saturating_add(1);
                 self.google_pim.last.clear();
-                self.google_pim.last_summary = "Google sync requested…".into();
+                self.google_pim.last_summary = format!("Google sync retry #{} requested…", self.google_pim.manual_attempts);
                 self.google_pim_tick(ui.ctx());
             }
             let summary = if self.google_pim.last_summary.is_empty() {
