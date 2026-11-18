@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r13)'
+        description: 'Community builder/package revision (e.g. b1r14)'
         required: true
         type: string
-        default: b1r13
+        default: b1r14
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -34,12 +34,12 @@ on:
         type: boolean
         default: true
       google_two_way_edit:
-        description: 'EXPERIMENTAL b1r9: explicit Create/Rename Google events and contacts; needs write-scope consent'
+        description: 'Google write-back worker (legacy buttons only when native forms are disabled)'
         required: true
         type: boolean
         default: false
       google_native_forms:
-        description: 'EXPERIMENTAL b1r13: Native forms and main-window Google actions (requires Google editing)'
+        description: 'Native Google forms and main-window actions; b1r14 hides redundant Google buttons'
         required: true
         type: boolean
         default: false
@@ -161,6 +161,12 @@ jobs:
         run: |
           & python scripts/b1r13_main_actions_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'b1r13 main Google actions patch mismatch; stop without publishing' }
+
+      - name: b1r14 clean up redundant Google action buttons (keep Sync Google now)
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.google_calendar_contacts == true && inputs.google_two_way_edit == true && inputs.google_native_forms == true
+        run: |
+          & python scripts/b1r14_remove_legacy_google_buttons.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'b1r14 UI cleanup failed closed; stop without publishing' }
 
       - name: Compile real Rust application, CLI and C++ Windows GUI launcher
         if: env.ALREADY_PUBLISHED != 'true'

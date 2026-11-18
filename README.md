@@ -1,51 +1,55 @@
+# MailCraft Enhanced PortableApps Builder Kit — b1r14 (Clean Native UI)
 
-## b1r13 — main Calendar and People actions fix (experimental)
+This ZIP contains **source code for a GitHub Actions Windows x64 PortableApps builder**, not a compiled MailCraft application. It is built on the user-tested **b1r13 native Google Calendar and Contacts add/edit/delete implementation** for upstream MailCraft `v0.13.0`. The b1r14 change is deliberately **UI cleanup only**.
 
-The b1r12 native-form patch did not intercept Delete from the main Calendar ribbon or People contact card. The **b1r13 patch** adds a guarded Google-only intercept at MailCraft's central command execution path and permits native form opening for selected Google records without changing the original engine permissions. See [b1r13 test checklist](docs/B1R13-MAIN-WINDOW-ACTIONS.md). Preserve a working b1r9/b1r12 installation and test with disposable Google data before publishing.
+## What changed in b1r14
 
-# MailCraft Enhanced PortableApps Builder Kit — b1r12 native-form repair
+With Google native forms enabled, remove the four redundant b1r9 shortcut buttons:
 
-This is an **experimental, source-building GitHub Actions kit** for MailCraft `v0.13.0` on Windows x64. It builds a real PortableApps package; **this ZIP is the builder source, not a prebuilt application**.
+- New Google contact…
+- New Google appointment…
+- Rename selected Google contact…
+- Rename selected Google event…
 
-**Goal:** Make MailCraft's existing **New Appointment, New Meeting and Contact** forms perform Google's create, edit and delete operations on Google-owned records, replacing the requirement to use the separate Google action buttons. The separate working b1r9 buttons remain available as a fallback.
+These are no longer necessary because MailCraft's regular **New Appointment / New Meeting / New Contact / Edit / Delete** commands have a native Google bridge through b1r10–b1r13.
 
-## Safety and known status
+**Keep** the **Sync Google now** button in Calendar and People, the sync status text, and the existing automatic 15-minute online refresh. Preserve the Google API worker, Gmail and OAuth integration, original mail features, signature preview, seven social-media icons, PortableApps data paths, and the b1r12/b1r13 native Google write/delete routing.
 
-- Latest user-confirmed working Google write-back baseline is **b1r9** (Gmail + signature preview + Calendar/Contacts sync + separate Google write buttons). Do not delete or overwrite that working installation.
-- b1r10 native-form routing and b1r11 all-day correction are dependencies. b1r12 builds on both; it adds native edit and delete routing, broader native contact fields, ETag checks and guarded deletion.
-- Google-origin calendars **remain read-only to MailCraft's original local engine**; only the explicit Google bridge may send mutations. This avoids accidentally editing only the local copy.
-- The native form returns **queued**, not **saved**, immediately. Look at MailCraft's Google sync status and confirm changes in the Google web interface. In uncertain network errors, check Google web before trying again.
-- **41 local source-level Python tests passed.** The kit has **not been built with Windows Rust toolchain or live-tested against Google** in this environment. An Actions compile failure or a failed live test means the fix is not verified.
-- No broad publication: `publish=false` for testing.
+The source cleanup is gated by `google_native_forms=true`. In a fallback b1r9-style build with `google_native_forms=false` and `google_two_way_edit=true`, the old explicit buttons remain available. This makes rollback safe.
 
-## Build from the ZIP
+## Known native Delete behavior
 
-1. Unzip and upload **the extracted contents** to your existing separate *MailCraft Enhanced PortableApps Builder* GitHub repository. Preserve `.github/workflows/build-portableapps.yml` and all `patches/` and `scripts/` subfolders. Do not upload credentials, your portable `Data` directory, or your working installation.
-2. In GitHub open **Actions → MailCraft PortableApps - source build / ZIP / NSIS / Release → Run workflow**.
-3. Set the following inputs:
+b1r13 deletion requires a **two-step confirmation**. The first Delete may show a confirmation/warning without submitting the Google deletion. Repeat the Delete deliberately to confirm. **After the second press, verify Google Calendar or Google Contacts on the web before clicking again**; a delayed refresh can otherwise make a successful deletion look incomplete.
 
-| Input | Value |
-| --- | --- |
-| `upstream_version` | `v0.13.0` |
-| `package_revision` | `b1r12` |
-| `compact_signature_preview` | `true` |
-| `signature_picture_button` | `true` |
-| `google_calendar_contacts` | `true` |
-| `google_two_way_edit` | **`true`** |
-| `google_native_forms` | **`true`** |
-| `publish` | **`false`** |
+Do not use important records as test data. Event edits/deletes have restrictions for recurring or non-organizer-owned items. The application should refuse unsupported changes rather than silently rewriting them locally.
 
-4. When all workflow steps succeed, download the **newly built PortableApps artifact**, make a backup of the existing portable `Data` directory, and install the test build to a **separate** folder. Do not run both installations against the same data at the same time.
-5. Authorize Google Calendar/Contacts write permissions as already done for b1r9. Keep the same Google account. Verify Gmail, all seven signature images, Calendar and Contacts refresh **before** exercising native saves.
-6. Test a uniquely named throwaway appointment and contact using the **original MailCraft forms**. The native Calendar form has a **Calendar** selector — choose the Google calendar; the new Contact form has **Save to** — choose the connected Google account. Then test edits and deletions on these throwaway objects, checking the corresponding Google websites and MailCraft's Google status.
-7. On the first native **Delete**, the form shows a warning without sending a request. Press **Delete AGAIN** to confirm. Never test on important records first.
+## Building b1r14
 
-See **`docs/B1R12-NATIVE-GOOGLE-CRUD.md`** for a detailed pass/fail checklist, limitations, and rollback.
+1. Keep a backup of your existing **working b1r13** installation and portable `Data` directory. Do not include your private data or Google credentials in the GitHub repository.
+2. Extract this entire builder ZIP into the existing enhanced-builder GitHub repository, preserving `.github/workflows`, `scripts`, `patches`, `tests`, `docs`, `launcher` and `foundation`.
+3. Navigate to **GitHub → Actions → MailCraft PortableApps → Run workflow**.
+4. Use the following workflow inputs:
 
-## Preserved
+   | Input | Value |
+   | --- | --- |
+   | `upstream_version` | `v0.13.0` |
+   | `package_revision` | `b1r14` |
+   | `compact_signature_preview` | `true` |
+   | `signature_picture_button` | `true` |
+   | `google_calendar_contacts` | `true` |
+   | `google_two_way_edit` | `true` |
+   | `google_native_forms` | `true` |
+   | `publish` | `false` for testing |
 
-Gmail/OAuth workflow, the working signature preview with seven social icons, 15-minute automatic Google synchronization while online, portable `Data` location, the b1r9 extra write controls, source audit checks, and test-only release handling are not replaced.
+5. Download the newly built PortableApps artifact only after GitHub Actions succeeds. For initial testing, use a **separate portable directory** and avoid running both versions against the same active profile.
+6. Confirm the extra Google shortcut row is gone but **Sync Google now** remains on **Calendar** and **People**. Verify sync status, native Calendar and People create/edit/delete, Gmail, signatures, and portable data persistence.
+7. Confirm changes on the Google Calendar and Google Contacts websites. Keep b1r13 as your rollback until you verify the new build.
 
-## Current limitations
+## Validation and scope
 
-Only **single, non-recurring, organizer-owned Google events** are eligible for existing-event changes and deletion. Editing guests, recurrence, cross-account calendar moves, and Google Meet setup are intentionally refused, not silently dropped. Google Contacts native form cannot save display-name overrides, categories, favorites, or encryption keys; it rejects those changes. For contacts with multiple addresses/websites, MailCraft's original form only exposes the first, so these edits need care. Birthdays with no year cannot be fully represented in the original form. Deletion from Google is real and may not be recoverable, even if the separate MailCraft list has not refreshed yet.
+- `python -m unittest discover -s tests -v` runs builder patch regression tests.
+- The b1r14 patch is `scripts/b1r14_remove_legacy_google_buttons.py`, applied **after** b1r13 in the workflow. It checks exact source anchors and refuses to modify the source if the build is missing native Google actions or manual sync.
+- This cleanup does **not** change Google scopes, HTTP/API behavior, record deletion confirmation, the automatic-sync interval, or engine permissions.
+- Local Python tests and ZIP checks are **not** a substitute for a successful GitHub Actions Windows compilation and user acceptance testing.
+
+See [`docs/B1R14-UI-CLEANUP.md`](docs/B1R14-UI-CLEANUP.md) for detailed tests. Historical notes for b1r12 and b1r13 are in the `docs/` directory.
