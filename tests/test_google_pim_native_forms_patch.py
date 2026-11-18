@@ -68,7 +68,7 @@ fn contact() {
     def test_workflow_reversible_opt_in(self):
         yml=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
         self.assertIn('google_native_forms:',yml)
-        self.assertIn('default: b1r12',yml)
+        self.assertIn('default: b1r13',yml)
         self.assertIn('scripts/google_pim_native_forms_patch.py --source upstream',yml)
         self.assertIn('inputs.google_two_way_edit == true && inputs.google_native_forms == true',yml)
         self.assertIn('publish:',yml)

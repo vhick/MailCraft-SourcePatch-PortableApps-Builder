@@ -1,3 +1,8 @@
+
+## b1r13 — main Calendar and People actions fix (experimental)
+
+The b1r12 native-form patch did not intercept Delete from the main Calendar ribbon or People contact card. The **b1r13 patch** adds a guarded Google-only intercept at MailCraft's central command execution path and permits native form opening for selected Google records without changing the original engine permissions. See [b1r13 test checklist](docs/B1R13-MAIN-WINDOW-ACTIONS.md). Preserve a working b1r9/b1r12 installation and test with disposable Google data before publishing.
+
 # MailCraft Enhanced PortableApps Builder Kit — b1r12 native-form repair
 
 This is an **experimental, source-building GitHub Actions kit** for MailCraft `v0.13.0` on Windows x64. It builds a real PortableApps package; **this ZIP is the builder source, not a prebuilt application**.
