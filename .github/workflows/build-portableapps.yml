@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r9)'
+        description: 'Community builder/package revision (e.g. b1r10)'
         required: true
         type: string
-        default: b1r9
+        default: b1r10
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -35,6 +35,11 @@ on:
         default: true
       google_two_way_edit:
         description: 'EXPERIMENTAL b1r9: explicit Create/Rename Google events and contacts; needs write-scope consent'
+        required: true
+        type: boolean
+        default: false
+      google_native_forms:
+        description: 'EXPERIMENTAL b1r10: route native Appointment, Meeting and Contact forms to Google (requires Google editing)'
         required: true
         type: boolean
         default: false
@@ -127,6 +132,17 @@ jobs:
         run: |
           & python scripts/google_pim_two_way_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Google write integration source drift or patch error; preserve b1r8 and do not publish' }
+
+      - name: Reject incompatible Google native-form options
+        if: inputs.google_native_forms == true && (inputs.google_calendar_contacts != true || inputs.google_two_way_edit != true)
+        run: |
+          throw 'google_native_forms requires both google_calendar_contacts and google_two_way_edit; no partial native patch is permitted'
+
+      - name: Apply b1r10 native Google Appointment / Meeting / Contact forms bridge (fail closed)
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.google_calendar_contacts == true && inputs.google_two_way_edit == true && inputs.google_native_forms == true
+        run: |
+          & python scripts/google_pim_native_forms_patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Google native forms patch source drift or error; b1r9 remains available' }
 
       - name: Compile real Rust application, CLI and C++ Windows GUI launcher
         if: env.ALREADY_PUBLISHED != 'true'

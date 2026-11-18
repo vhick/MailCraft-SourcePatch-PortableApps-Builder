@@ -1,8 +1,18 @@
-# MailCraft Enhanced PortableApps Builder b1r9 (EXPERIMENTAL two-way preview)
+# MailCraft Enhanced PortableApps Builder b1r10 (EXPERIMENTAL native form bridge)
+
+**b1r9 is the latest user-confirmed working enhanced baseline for Gmail, seven signature pictures, Google Calendar/Contacts downloads and basic event/contact creation.**
 
 ## Baseline
 
-**b1r8 has been confirmed working on Windows** by the user: Gmail; HTML signature and all seven pictures; **2 Google calendars, 118 events, and 174 contacts** downloaded successfully. **Do not replace that working installation** with this experimental revision until the tests below pass. This repository remains separate from the original stable MailCraft builder.
+**b1r8 and b1r9 have been confirmed working on Windows** by the user: Gmail; HTML signature and all seven pictures; **2 Google calendars, 118 events, and 174 contacts** downloaded successfully. **Do not replace that working installation** with this experimental revision until the tests below pass. This repository remains separate from the original stable MailCraft builder.
+
+## New b1r10 native-form pilot
+
+- **Existing New Appointment / New Meeting:** When the calendar selected in the normal MailCraft editor belongs to a Google account, the form now queues a Google event rather than a local-only copy. The pilot supports **simple timed appointments**, description, location, reminders, privacy/free-busy, and meetings with direct plain-email guests entered with semicolons. Guest invitations are sent **only when pressing Send** in the native meeting editor. Selecting a local/Microsoft calendar retains the original behavior.
+- **Existing New Contact:** A Save to destination selector appears in MailCraft's normal new-contact form. It defaults to the only connected Google account when exactly one exists; the user can switch to **This computer (local)**. Google creation supports first name, last name and exactly one email. Other populated fields are explicitly rejected, not silently discarded. Existing synced Google contacts can change first and last name through the native contact editor; unsupported edits are rejected.
+- Original Google-specific b1r9 buttons remain as fallback. This pilot **does not yet** handle Google Meet link creation, recurring or all-day events, modifying event times/attendees after creation, contact phone/address/organization fields, deletes, or full conflict resolution. Native event edit of an existing synced Google item remains read-only for now.
+- The `google_native_forms` switch defaults to **false**; turn it on only for a separate test installation, with `google_calendar_contacts=true`, `google_two_way_edit=true`, and `publish=false`.
+- A native form queues a write and immediately closes; only the **later Google sync status** confirms a successful remote save. After a network error **check Google web before retrying** to avoid duplicate appointments or invitations.
 
 ## Improvements in b1r9
 
@@ -22,11 +32,12 @@ Go to **Actions → MailCraft PortableApps - source build / ZIP / NSIS / Release
 | Input | Value |
 | --- | --- |
 | `upstream_version` | `v0.13.0` |
-| `package_revision` | `b1r9` |
+| `package_revision` | `b1r10` |
 | `compact_signature_preview` | `true` |
 | `signature_picture_button` | `true` |
 | `google_calendar_contacts` | `true` |
-| **`google_two_way_edit`** | **`true` to test explicit editing; `false` for b1r8 behavior** |
+| **`google_two_way_edit`** | **`true` for b1r9 editing** |
+| **`google_native_forms`** | **`true` to test native form bridge; `false` to keep b1r9 behavior** |
 | `publish` | **`false`** for the initial test |
 
 The new step runs **after** the proven b1r8 Google patch, checks exact source anchors, and stops on source drift. The download, launcher, PortableApps packaging, tests, and original b1r8 fallback remain included.
