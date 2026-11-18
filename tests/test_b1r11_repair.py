@@ -65,7 +65,7 @@ fn contact() {
 
     def test_workflow_is_optional_and_publish_disabled(self):
         yml=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
-        self.assertIn('default: b1r11',yml)
+        self.assertIn('default: b1r12',yml)
         self.assertIn('scripts/b1r11_repair_patch.py --source upstream',yml)
         self.assertIn('inputs.google_native_forms == true',yml)
         self.assertIn('publish:',yml)
