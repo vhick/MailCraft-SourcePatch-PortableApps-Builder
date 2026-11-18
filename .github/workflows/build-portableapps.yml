@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.13.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r10)'
+        description: 'Community builder/package revision (e.g. b1r11)'
         required: true
         type: string
-        default: b1r10
+        default: b1r11
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -143,6 +143,12 @@ jobs:
         run: |
           & python scripts/google_pim_native_forms_patch.py --source upstream
           if ($LASTEXITCODE -ne 0) { throw 'Google native forms patch source drift or error; b1r9 remains available' }
+
+      - name: Apply b1r11 all-day Google appointment correction
+        if: env.ALREADY_PUBLISHED != 'true' && inputs.google_calendar_contacts == true && inputs.google_two_way_edit == true && inputs.google_native_forms == true
+        run: |
+          & python scripts/b1r11_repair_patch.py --source upstream
+          if ($LASTEXITCODE -ne 0) { throw 'b1r11 source mismatch; preserve working b1r9 and stop' }
 
       - name: Compile real Rust application, CLI and C++ Windows GUI launcher
         if: env.ALREADY_PUBLISHED != 'true'

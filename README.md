@@ -1,3 +1,7 @@
+# MailCraft Enhanced PortableApps Builder b1r11 — experimental safe repair
+
+**New:** Keeps b1r10 native forms; adds guarded all-day Google appointment creation, preserving existing contact ETag conflict protection. Original native delete and all other unsupported Google writes remain unavailable. See `docs/B1R11-SAFE-CORRECTIONS.md` before building. **This has not been compiled or live-tested on Windows.**
+
 # MailCraft Enhanced PortableApps Builder b1r10 (EXPERIMENTAL native form bridge)
 
 **b1r9 is the latest user-confirmed working enhanced baseline for Gmail, seven signature pictures, Google Calendar/Contacts downloads and basic event/contact creation.**
