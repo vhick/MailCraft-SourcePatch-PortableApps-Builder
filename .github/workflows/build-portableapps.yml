@@ -9,10 +9,10 @@ on:
         type: string
         default: v0.14.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r15)'
+        description: 'Community builder/package revision (e.g. b1r16)'
         required: true
         type: string
-        default: b1r15
+        default: b1r16
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true

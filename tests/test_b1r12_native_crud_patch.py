@@ -101,9 +101,10 @@ fn contact() {
 
     def test_workflow_retains_safe_options(self):
         text=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
-        for anchor in ('default: b1r15','google_native_forms:', 'scripts/b1r11_repair_patch.py',
+        for anchor in ('package_revision:','google_native_forms:', 'scripts/b1r11_repair_patch.py',
                        'scripts/b1r12_native_crud_patch.py','default: false','inputs.google_two_way_edit == true'):
             self.assertIn(anchor,text)
+        self.assertRegex(text, r'(?m)^        default: b\d+r\d+$')
         self.assertIn('rights: Rights::Read',(ROOT/'patches/google_pim_net.rs').read_text())
         self.assertIn('If-Match',(ROOT/'patches/google_pim_write_net.rs').read_text())
 

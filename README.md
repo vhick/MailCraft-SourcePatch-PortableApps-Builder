@@ -1,6 +1,12 @@
-# MailCraft Enhanced PortableApps Builder Kit — b1r15 (Adaptive Checkout / Guarded Compatibility)
+# MailCraft Enhanced PortableApps Builder Kit — b1r16 (Windows Cleanup Fix / Guarded Compatibility)
 
 This is a complete **GitHub Actions Windows source-builder kit**, not a precompiled MailCraft app. It is derived from the **user-confirmed working b1r14 Clean Native UI** builder. The goal is to support compatible upstream releases with fewer revisions, without silently breaking portable data, Google Calendar/Contacts, Gmail, or signature features.
+
+## b1r16: fix the second Windows test failure (November 21, 2026)
+
+The subsequent GitHub Actions log `logs_121490042715.zip` failed **before upstream checkout**, at `Python unit tests`. A deliberately incorrect SHA caused Git to reject checkout correctly, but the builder tried to delete its temporary clone with plain `shutil.rmtree`; Windows denied deletion of read-only `.git/objects` (`[WinError 5]`). The new checkout helper validates tag/SHA equality **before** attempting checkout and uses Python 3.12's `shutil.rmtree(onexc=...)` read-only handler for failure cleanup. Genuine ACL and lock errors remain failures.
+
+The regression suite no longer assumes one hard-coded package revision, so future b1rNN updates won't fail historical tests merely due to a version bump. All b1r15 guarded source compatibility and the working b1r14 Google integration remain untouched. **This does not yet prove v0.14.0 can be compiled or used with Google write access.** See `docs/B1R16-WINDOWS-READONLY-CHECKOUT-FIX.md`.
 
 ## Diagnosed failure: upstream v0.14.0 on November 21, 2026
 
@@ -32,7 +38,7 @@ MailCraft changes frequently. A program can safely normalize **known** source va
 | Workflow input | Test value |
 | --- | --- |
 | `upstream_version` | `v0.14.0` (or `latest` for later compatible stable releases) |
-| `package_revision` | `b1r15` |
+| `package_revision` | `b1r16` |
 | `compact_signature_preview` | `true` |
 | `signature_picture_button` | `true` |
 | `google_calendar_contacts` | `true` |
@@ -47,5 +53,5 @@ MailCraft changes frequently. A program can safely normalize **known** source va
 
 - b1r14's native Google CRUD routing, two-step deletion confirmation, removal of redundant Google buttons, Gmail functionality, PortableApps profile path, and existing release publisher/package builder are retained.
 - The default `publish=false` is important: upstream v0.14.0 compilation and live Google operations are **not verified** by local Python tests.
-- `python -m unittest discover -s tests -v` exercises all unit tests. The validated ZIP can be unpacked directly into the builder repo.
+- `python -m unittest discover -s tests -v` exercises all unit tests (61 in the clean b1r16 ZIP). The validated ZIP can be unpacked directly into the builder repo.
 - For the exact diagnosis and maintenance approach see `docs/B1R15-WINDOWS-CHECKOUT-AND-COMPATIBILITY.md`.

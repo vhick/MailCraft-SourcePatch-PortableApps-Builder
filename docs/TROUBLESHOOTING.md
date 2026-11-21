@@ -21,3 +21,8 @@
 | Antivirus warning | Community binaries are unsigned, no commercial signing identity claimed | Verify provenance/hash and inspect with Windows Defender; never disable antivirus or advise blind allowlisting |
 
 **Windows runtime failures must be distinguished from CI/static checks.** Screenshots from GitHub Actions showing green checkmarks are not evidence that a GUI launched successfully on a normal user desktop.
+
+
+## Windows Git object cleanup fails (`[WinError 5]`, Nov 21 2026)
+
+If the `test_commit_mismatch_refuses_source` test fails when deleting a temporary `.git/objects` file, use b1r16 or later. b1r16 checks tag/SHA match before the worktree checkout and uses a read-only-safe `shutil.rmtree(onexc=...)` handler for failed clones. Do not run as administrator or disable the test. This is independent of the Android screenshot path-length issue fixed in b1r15. See `docs/B1R16-WINDOWS-READONLY-CHECKOUT-FIX.md`.

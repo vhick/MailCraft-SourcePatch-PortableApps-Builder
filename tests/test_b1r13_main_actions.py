@@ -63,7 +63,7 @@ pub fn execute(&mut self,id:&str,params:Value)->Result<Value,String>{
         self.assertNotIn('Rights::Write',fragment)
         self.assertNotIn('calendar.owner =',fragment)
         workflow=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
-        self.assertIn('default: b1r15',workflow)
+        self.assertRegex(workflow, r'(?m)^        default: b\d+r\d+$')
         self.assertIn('scripts/b1r13_main_actions_patch.py --source upstream',workflow)
         self.assertLess(workflow.index('scripts/b1r12_native_crud_patch.py'),workflow.index('scripts/b1r13_main_actions_patch.py'))
         self.assertLess(workflow.index('scripts/b1r13_main_actions_patch.py'),workflow.index('Compile real Rust application'))

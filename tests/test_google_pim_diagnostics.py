@@ -18,7 +18,7 @@ class DiagnosticsTests(unittest.TestCase):
     def test_builder_toggle(self):
         s=(ROOT/'.github/workflows/build-portableapps.yml').read_text()
         self.assertIn('google_calendar_contacts:',s)
-        self.assertIn('default: b1r15',s)
+        self.assertRegex(s, r'(?m)^        default: b\d+r\d+$')
 if __name__=='__main__': unittest.main()
 
 class TokenRegressionTests(unittest.TestCase):

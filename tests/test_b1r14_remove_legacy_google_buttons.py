@@ -97,7 +97,7 @@ impl MailApp {
 
     def test_pipeline_after_b1r13_only_in_native_mode(self):
         yaml = (ROOT / '.github/workflows/build-portableapps.yml').read_text()
-        self.assertIn('default: b1r15', yaml)
+        self.assertRegex(yaml, r'(?m)^        default: b\d+r\d+$')
         self.assertIn('scripts/b1r14_remove_legacy_google_buttons.py --source upstream', yaml)
         self.assertLess(yaml.index('scripts/b1r13_main_actions_patch.py --source upstream'),
                         yaml.index('scripts/b1r14_remove_legacy_google_buttons.py --source upstream'))

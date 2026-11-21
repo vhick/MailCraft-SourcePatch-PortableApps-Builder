@@ -2,6 +2,7 @@
 from __future__ import annotations
 import importlib.util
 import subprocess
+from unittest import mock
 import tempfile
 from pathlib import Path
 import unittest
@@ -51,9 +52,12 @@ class Checkout(unittest.TestCase):
         self.assertEqual(git('config','--local','core.longpaths',cwd=self.dest),'true')
 
     def test_commit_mismatch_refuses_source(self):
-        with self.assertRaises(subprocess.CalledProcessError):
-            mod.checkout('v0.14.0','f'*40,self.dest,str(self.repo))
+        # The wrong SHA is rejected before checkout, with no partial source.
+        with mock.patch.object(mod, '_git', wraps=mod._git) as git_spy:
+            with self.assertRaisesRegex(RuntimeError, 'points at'):
+                mod.checkout('v0.14.0','f'*40,self.dest,str(self.repo))
         self.assertFalse(self.dest.exists())
+        self.assertFalse(any(c.args and c.args[0] == 'checkout' for c in git_spy.call_args_list))
 
     def test_invalid_tag_does_not_clone(self):
         with self.assertRaises(ValueError):
