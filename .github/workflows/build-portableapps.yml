@@ -7,12 +7,12 @@ on:
         description: 'Stable release: latest or vX.Y.Z'
         required: true
         type: string
-        default: v0.13.0
+        default: v0.14.0
       package_revision:
-        description: 'Community builder/package revision (e.g. b1r14)'
+        description: 'Community builder/package revision (e.g. b1r15)'
         required: true
         type: string
-        default: b1r14
+        default: b1r15
       publish:
         description: 'Publish validated ZIP and installer to this builder repository'
         required: true
@@ -93,15 +93,14 @@ jobs:
           & python scripts/preflight.py --identity source.json --revision "$env:PACKAGE_REVISION" --github-env "$env:GITHUB_ENV"
           if ($LASTEXITCODE -ne 0) { throw 'Release preflight failed' }
 
-      - name: Verify upstream tag via shallow HTTPS checkout
+      - name: Verify upstream tag with Windows long-path-safe sparse checkout
         if: env.ALREADY_PUBLISHED != 'true'
         run: |
-          git clone --depth 1 --single-branch --branch "$env:UPSTREAM_TAG" https://github.com/UCS-Care-Group/mailcraft.git upstream
-          if ($LASTEXITCODE -ne 0) { throw 'Source clone failed' }
-          $got = (git -C upstream rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -ne 0 -or $got -cne $env:UPSTREAM_SHA) { throw "Git tag commit mismatch: $got versus $env:UPSTREAM_SHA" }
-          if (-not (Test-Path -LiteralPath upstream/Cargo.lock)) { throw 'Missing Cargo.lock; aborting unpinned dependency build' }
-          Write-Host "Verified source commit: $got"
+          # Do not attempt a normal checkout first: Android screenshot fixture
+          # filenames in v0.14.0 exceed Windows' default path budget.
+          & python scripts/checkout_upstream.py --tag "$env:UPSTREAM_TAG" --sha "$env:UPSTREAM_SHA" --destination upstream
+          if ($LASTEXITCODE -ne 0) { throw 'Verified source checkout failed (long paths, missing source, or tag mismatch)' }
+          Write-Host "Verified source: $env:UPSTREAM_TAG @ $env:UPSTREAM_SHA"
 
       - name: Apply source-level portable data adapters; fail closed if upstream changes
         if: env.ALREADY_PUBLISHED != 'true'

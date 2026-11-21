@@ -18,6 +18,25 @@ def replace_once(body: str, old: str, new: str, name: str) -> str:
     return body.replace(old, new, 1)
 
 
+def choose_google_poll_hook(ui_source: str) -> str:
+    """Choose one of two audited, once-per-frame MailApp answer-processing hooks.
+
+    Refuse missing or duplicated hooks; never inject into an unrelated function.
+    """
+    legacy = '        self.poll_calendar();'
+    modern = '        self.poll_graph();'
+    if ui_source.count(legacy) == 1:
+        return legacy
+    if ui_source.count(legacy) == 0 and ui_source.count(modern) == 1:
+        if 'pub fn logic(&mut self, ctx: &egui::Context)' not in ui_source:
+            raise RuntimeError('v0.14 Graph answer hook found outside verified per-frame logic; STOP')
+        logic = ui_source.split('pub fn logic(&mut self, ctx: &egui::Context)', 1)[1]
+        if modern not in logic:
+            raise RuntimeError('v0.14 Graph answer hook is not in the per-frame logic; STOP')
+        return modern
+    raise RuntimeError('Google per-frame answer hook missing or duplicated; source changed; STOP')
+
+
 def plan(src: Path) -> dict[Path, str]:
     oauth = src/'crates/net/src/oauth.rs'
     net_lib = src/'crates/net/src/lib.rs'
@@ -80,7 +99,12 @@ def plan(src: Path) -> dict[Path, str]:
         '            calendar: Default::default(),\n'
         '            google_pim: Default::default(),',
         'MailApp Google initializer')
-    c = replace_once(c, '        self.poll_calendar();', '        self.poll_calendar();\n        self.poll_google_pim();', 'poll native Google results')
+    # Upstream v0.14.0 moved calendar answer handling into its sync driver and
+    # removed poll_calendar(). Prefer the original b1r14 hook where present;
+    # otherwise use the still-live, once-per-frame Graph answer hook. This is
+    # a narrow, explicitly audited compatibility variant, not fuzzy patching.
+    poll_anchor = choose_google_poll_hook(c)
+    c = replace_once(c, poll_anchor, poll_anchor + '\n        self.poll_google_pim();', 'poll native Google results')
     c = replace_once(c, '            self.calendar_tick(ctx);', '            self.calendar_tick(ctx);\n            self.google_pim_tick(ctx);', 'start native Google jobs')
     d = replace_once(d, '    let search_ctx = ctx.clone();', '    let search_ctx = ctx.clone();\n    let google_pim_ctx = ctx.clone();', 'host Google context')
     d = replace_once(d,

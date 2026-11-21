@@ -1,55 +1,51 @@
-# MailCraft Enhanced PortableApps Builder Kit — b1r14 (Clean Native UI)
+# MailCraft Enhanced PortableApps Builder Kit — b1r15 (Adaptive Checkout / Guarded Compatibility)
 
-This ZIP contains **source code for a GitHub Actions Windows x64 PortableApps builder**, not a compiled MailCraft application. It is built on the user-tested **b1r13 native Google Calendar and Contacts add/edit/delete implementation** for upstream MailCraft `v0.13.0`. The b1r14 change is deliberately **UI cleanup only**.
+This is a complete **GitHub Actions Windows source-builder kit**, not a precompiled MailCraft app. It is derived from the **user-confirmed working b1r14 Clean Native UI** builder. The goal is to support compatible upstream releases with fewer revisions, without silently breaking portable data, Google Calendar/Contacts, Gmail, or signature features.
 
-## What changed in b1r14
+## Diagnosed failure: upstream v0.14.0 on November 21, 2026
 
-With Google native forms enabled, remove the four redundant b1r9 shortcut buttons:
+The supplied GitHub Actions run (`logs_121467734198.zip`) failed in **Verify upstream tag via shallow HTTPS checkout**, not in Rust or any Google patch:
 
-- New Google contact…
-- New Google appointment…
-- Rename selected Google contact…
-- Rename selected Google event…
+`error: unable to create file .../apps/mailcraft-android/app/src/test/snapshots/images/...png: Filename too long`
 
-These are no longer necessary because MailCraft's regular **New Appointment / New Meeting / New Contact / Edit / Delete** commands have a native Google bridge through b1r10–b1r13.
+`fatal: unable to checkout working tree`
 
-**Keep** the **Sync Google now** button in Calendar and People, the sync status text, and the existing automatic 15-minute online refresh. Preserve the Google API worker, Gmail and OAuth integration, original mail features, signature preview, seven social-media icons, PortableApps data paths, and the b1r12/b1r13 native Google write/delete routing.
+Release resolution had already selected **v0.14.0**, commit `979953f012636fa7c2380124fd307152404c29bf`. Git could not create unrelated long Android test screenshot paths on Windows. This failure alone says nothing about whether the existing patch chain will compile against v0.14.0.
 
-The source cleanup is gated by `google_native_forms=true`. In a fallback b1r9-style build with `google_native_forms=false` and `google_two_way_edit=true`, the old explicit buttons remain available. This makes rollback safe.
+## What b1r15 changes
 
-## Known native Delete behavior
+1. **Verified checkout without long Windows paths.** `scripts/checkout_upstream.py` clones the released tag without initially writing the source tree; enables `core.longpaths=true` **locally only in that checkout**; and performs a sparse checkout excluding *only* Android screenshot test fixtures at `apps/mailcraft-android/app/src/test/snapshots/images/`. All Rust crates, root manifests/lockfile, Windows application sources, assets and launcher dependencies remain included. The checked-out commit and annotated tag are both verified against GitHub's immutable resolved commit, and incomplete checkouts are removed if an operation fails.
+2. **Version-aware per-frame Google sync hook.** `scripts/google_pim_patch.py` retains b1r14's original `self.poll_calendar()` integration when that call exists. If it does not, it recognizes the separately audited `self.poll_graph()` call **within the per-frame `MailApp::logic` function**, which appears in upstream v0.14.0. It refuses missing, duplicated, or out-of-context hooks. It does **not** bypass the exact checks for authentication, native commands, Google writes or portable storage.
+3. **Regression tests:** four local Git checkout tests (including an annotated tag, Android exclusion, SHA-mismatch rejection and preserving core source), plus four lifecycle hook compatibility tests. The historical b1r14 Google CRUD, sync and UI tests are retained.
+4. **Workflow defaults** advance to `v0.14.0` / `b1r15`, with `publish: false`. Future releases can still be requested using `latest` or a specific stable tag. Existing opt-in options remain explicit and unchanged.
 
-b1r13 deletion requires a **two-step confirmation**. The first Delete may show a confirmation/warning without submitting the Google deletion. Repeat the Delete deliberately to confirm. **After the second press, verify Google Calendar or Google Contacts on the web before clicking again**; a delayed refresh can otherwise make a successful deletion look incomplete.
+### Why this isn't an unrestricted "auto-patcher"
 
-Do not use important records as test data. Event edits/deletes have restrictions for recurring or non-organizer-owned items. The application should refuse unsupported changes rather than silently rewriting them locally.
+MailCraft changes frequently. A program can safely normalize **known** source variations and choose known equivalent hooks, but it cannot infer arbitrary new Rust architecture, security flows or API permissions. Therefore this builder **must stop without publishing** when a required source pattern or contract changes. That is intentional. The particular 0.14.0 release has not been compiled or end-to-end tested in this environment; additional patches may be required once the next Windows run reaches the source adaptation steps.
 
-## Building b1r14
+## How to run
 
-1. Keep a backup of your existing **working b1r13** installation and portable `Data` directory. Do not include your private data or Google credentials in the GitHub repository.
-2. Extract this entire builder ZIP into the existing enhanced-builder GitHub repository, preserving `.github/workflows`, `scripts`, `patches`, `tests`, `docs`, `launcher` and `foundation`.
-3. Navigate to **GitHub → Actions → MailCraft PortableApps → Run workflow**.
-4. Use the following workflow inputs:
+1. Back up your working **b1r14** build, particularly the `Data` folder. Do **not** commit credentials or portable `Data` into your builder repository.
+2. Extract the kit into the root of your existing **Enhanced MailCraft PortableApps builder** repository; include the hidden `.github/` folder, `patches/`, `scripts/`, `tests/`, `launcher/`, `foundation/`, `docs/`. Do not use it for the separate official upstream-only builder.
+3. Commit in GitHub Desktop, push, then run **Actions → MailCraft PortableApps → Run workflow** with:
 
-   | Input | Value |
-   | --- | --- |
-   | `upstream_version` | `v0.13.0` |
-   | `package_revision` | `b1r14` |
-   | `compact_signature_preview` | `true` |
-   | `signature_picture_button` | `true` |
-   | `google_calendar_contacts` | `true` |
-   | `google_two_way_edit` | `true` |
-   | `google_native_forms` | `true` |
-   | `publish` | `false` for testing |
+| Workflow input | Test value |
+| --- | --- |
+| `upstream_version` | `v0.14.0` (or `latest` for later compatible stable releases) |
+| `package_revision` | `b1r15` |
+| `compact_signature_preview` | `true` |
+| `signature_picture_button` | `true` |
+| `google_calendar_contacts` | `true` |
+| `google_two_way_edit` | `true` |
+| `google_native_forms` | `true` |
+| `publish` | **`false`** |
 
-5. Download the newly built PortableApps artifact only after GitHub Actions succeeds. For initial testing, use a **separate portable directory** and avoid running both versions against the same active profile.
-6. Confirm the extra Google shortcut row is gone but **Sync Google now** remains on **Calendar** and **People**. Verify sync status, native Calendar and People create/edit/delete, Gmail, signatures, and portable data persistence.
-7. Confirm changes on the Google Calendar and Google Contacts websites. Keep b1r13 as your rollback until you verify the new build.
+4. Confirm the new step **Verify upstream tag with Windows long-path-safe sparse checkout** succeeds. If a later **source adaptation / Google integration** step fails, **do not disable that patch or set publish=true**. The error identifies the remaining upstream source drift. Provide the new GitHub Actions log ZIP for a targeted compatibility correction.
+5. Only if the **entire** workflow succeeds, test the generated app in a **separate portable folder**. Verify Gmail, signature image preview, Calendar and Contacts add/edit/delete, manual **Sync Google now**, 15-minute refresh, and `Data` persistence; check the edits on Google's sites. Keep b1r14 as rollback until confirmed.
 
-## Validation and scope
+## Notes
 
-- `python -m unittest discover -s tests -v` runs builder patch regression tests.
-- The b1r14 patch is `scripts/b1r14_remove_legacy_google_buttons.py`, applied **after** b1r13 in the workflow. It checks exact source anchors and refuses to modify the source if the build is missing native Google actions or manual sync.
-- This cleanup does **not** change Google scopes, HTTP/API behavior, record deletion confirmation, the automatic-sync interval, or engine permissions.
-- Local Python tests and ZIP checks are **not** a substitute for a successful GitHub Actions Windows compilation and user acceptance testing.
-
-See [`docs/B1R14-UI-CLEANUP.md`](docs/B1R14-UI-CLEANUP.md) for detailed tests. Historical notes for b1r12 and b1r13 are in the `docs/` directory.
+- b1r14's native Google CRUD routing, two-step deletion confirmation, removal of redundant Google buttons, Gmail functionality, PortableApps profile path, and existing release publisher/package builder are retained.
+- The default `publish=false` is important: upstream v0.14.0 compilation and live Google operations are **not verified** by local Python tests.
+- `python -m unittest discover -s tests -v` exercises all unit tests. The validated ZIP can be unpacked directly into the builder repo.
+- For the exact diagnosis and maintenance approach see `docs/B1R15-WINDOWS-CHECKOUT-AND-COMPATIBILITY.md`.
